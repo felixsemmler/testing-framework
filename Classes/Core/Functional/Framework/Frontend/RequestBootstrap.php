@@ -14,12 +14,13 @@ namespace TYPO3\TestingFramework\Core\Functional\Framework\Frontend;
  * The TYPO3 project - inspiring people to share!
  */
 
+use TYPO3\CMS\Core\Configuration\ConfigurationManager;
 use TYPO3\CMS\Core\Core\Bootstrap;
 use TYPO3\CMS\Core\Core\ClassLoadingInformation;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Core\SystemEnvironmentBuilder;
 use TYPO3\CMS\Core\Utility\ArrayUtility;
-use TYPO3\CMS\Frontend\Http\Application;
+use TYPO3\TestingFramework\Core\Functional\Framework\Frontend;
 
 /**
  * Bootstrap for direct CLI Request
@@ -122,7 +123,7 @@ class RequestBootstrap
         $_SERVER['SCRIPT_FILENAME'] = $_SERVER['_'] = $_SERVER['PATH_TRANSLATED'] = $this->requestArguments['documentRoot'] . '/index.php';
         $_SERVER['QUERY_STRING'] = (isset($requestUrlParts['query']) ? $requestUrlParts['query'] : '');
         $_SERVER['REQUEST_URI'] = $requestUrlParts['path'] . (isset($requestUrlParts['query']) ? '?' . $requestUrlParts['query'] : '');
-        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_SERVER['REQUEST_METHOD'] = $this->request->getMethod();;
 
         // Define HTTPS and server port:
         if (isset($requestUrlParts['scheme'])) {
@@ -171,7 +172,16 @@ class RequestBootstrap
                 $GLOBALS,
                 $this->context->getGlobalSettings() ?? []
             );
-            $container->get(Application::class)->run();
+
+            // we only take the configuration manager from the container
+            $configurationManager = $container->get(ConfigurationManager::class);
+
+            // application is our own version and not known to the autloader from the container
+            $application = new Application($configurationManager);
+
+            // simple ->run won't take our request body
+            $application->runFromTestingFramework();
+
             $result['status'] = 'success';
             $result['content'] = static::getContent();
         } catch (\Exception $exception) {
