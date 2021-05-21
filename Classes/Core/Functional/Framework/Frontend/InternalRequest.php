@@ -51,12 +51,10 @@ class InternalRequest extends Request implements \JsonSerializable
     }
 
     /**
-     * @param string|null $uri URI for the request, if any.
-     * @param string $method method to use, GET is default.
-     * @param string|null $content body content to use, if any.
-     * @param array $headers Headers for the message, if any.
+     * @param array $data
+     * @return AbstractInstruction[]
      */
-    public function __construct($uri = null, $method = 'GET', string $content = null, array $headers = []) {
+    private static function buildInstructions(array $data): array
     {
         return array_map(
             function (array $data) {
@@ -68,8 +66,11 @@ class InternalRequest extends Request implements \JsonSerializable
 
     /**
      * @param string|null $uri URI for the request, if any.
+     * @param string $method method to use, GET is default.
+     * @param string|null $content body content to use, if any.
+     * @param array $headers Headers for the message, if any.
      */
-    public function __construct($uri = null)
+    public function __construct($uri = null, $method = 'GET', string $content = null, array $headers = []) {
     {
         $body = new Stream('php://temp', 'wb+');
         if (null !== $content) {
@@ -172,7 +173,21 @@ class InternalRequest extends Request implements \JsonSerializable
     }
 
     /**
-     * @param AbstractInstruction[] $instructions
+     * @param array $parameters
+     * @return InternalRequest
+     */
+    public function withHeaders(array $headers): InternalRequest
+    {
+        $target = clone $this;
+        $target->headers = $headers;
+        if (!isset($target->headers['user-agent'])) {
+            $target->headers['user-agent'] = 'TYPO3 Functional Test Request';
+        }
+        return $target;
+    }
+
+    /**
+     * @param AbstractInstruction[] $headers
      * @return InternalRequest
      */
     public function withInstructions(array $instructions): InternalRequest
@@ -180,16 +195,6 @@ class InternalRequest extends Request implements \JsonSerializable
         $target = clone $this;
         foreach ($instructions as $instruction) {
             $target->instructions[$instruction->getIdentifier()] = $instruction;
-        }
-        return $target;
-    }
-
-    public function withHeaders(array $headers): InternalRequest
-    {
-        $target = clone $this;
-        $target->headers = $headers;
-        if (!isset($target->headers['user-agent'])) {
-            $target->headers['user-agent'] = 'TYPO3 Functional Test Request';
         }
         return $target;
     }
